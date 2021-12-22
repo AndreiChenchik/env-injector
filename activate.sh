@@ -1,4 +1,4 @@
-for app in ${env-wrapped[@]}; do
+for app in ${env_wrapped[@]}; do
   eval "
     ${app}() {
       appPath=\$(which -a \$0 | grep \"^/\" | head -1)
