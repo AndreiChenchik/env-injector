@@ -23,7 +23,7 @@ for app in ${env_wrapped[@]}; do
             if newKey=\$(op signin \$OP_HOST --session \${sessionKey:-expired})
             then
               eval \$newKey
-              envs=\$(op list items --vault \${OP_VAULT} --tags \${OP_TAG},app/\$0 | op get item - --cache | jq '.details.sections[] | select( has(\"fields\") ) | .fields[] | {name: .t, value: .v}' | jq -r '\"\(.name)=\(.value)\"' | tr '\n' ' ')
+              envs=\$(op list items --vault \${OP_VAULT} --tags \${OP_TAG}/\$0 | jq 'sort_by(.overview.title)' | op get item - | jq '.details.sections[] | select( has(\"fields\") ) | .fields[] | {name: .t, value: .v}' | jq -r '\"\(.name)=\(.value)\"' | tr '\n' ' ')
 
               eval \"\${envs:0:-1} \$appPath \$@\"
             fi
