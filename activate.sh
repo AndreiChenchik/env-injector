@@ -1,4 +1,6 @@
 supported_shells=("zsh bash")
+bold=$(tput bold)
+normal=$(tput sgr0)
 
 if test -n "$ZSH_VERSION"; then
   SHELL_NAME=zsh
@@ -15,10 +17,10 @@ fi
 
 command_preexec="$(command -v preexec 2>/dev/null)"
 
-# if [ "$command_preexec" != "" ] && [ "$ENVINJ_SHELL" = "zsh" ]; then
-# 	echo "EJ: Can't run in zsh environment that already leverage preexec command."
-# 	return
-# fi
+if [ "$command_preexec" != "" ] && [ "$ENVINJ_SHELL" = "zsh" ]; then
+	echo "EJ: Can't run in zsh environment that already leverage preexec command."
+	return
+fi
 
 echoerr() { 
 	true
@@ -37,7 +39,7 @@ validate_command () {
 		fi
 
 		echoerr block $block
-		fetchedname=$(basename $block)  
+		fetchedname=$(basename $block 2>/dev/null)  
 		envinj_skipping="no"
 		for skipname in `echo $ENVINJ_SKIP`; do
 			echoerr skip $skipname
@@ -92,7 +94,9 @@ preexec () {
 	ENVINJ_APP=$(eval "validate_command $envinj_command")
 
 	if [ "$ENVINJ_APP" != "" ]; then
-		echo "EJ: Injecting environment variables for $ENVINJ_APP"
+		echo "🔓ej - found an app that needs an injection"
+		echo "🔓ej - preparing environment variables for ${bold}$ENVINJ_APP${normal}"
+		echo "🔓ej - passing request to provider (${bold}$ENVINJ_PROVIDER${normal})"
 		
 		ej_user_command="user_command () { $ENVINJ_PROVIDER; }"
 		echoerr $ej_user_command
@@ -103,7 +107,7 @@ preexec () {
 
 		eval "$(echo $new_envs | awk '$0="export "$0')"
 
-		echo "EJ: Vars set"
+		echo "🔓ej - injected"
 	fi
 }
 
@@ -113,7 +117,8 @@ fi
 
 precmd() {
 	if [ "$ENVINJ_STATE" != "" ]; then
-		echo "EJ: Reverting environment to previosly set variables"
+		echo "🔓ej - secure process exiting"
+		echo "🔓ej - hiding your secrets now and reverting environment"
 		
 		
 		prev_envs="$(echo $ENVINJ_STATE | tr -d '\n' | tr -d ' ' | base64 -d)"
