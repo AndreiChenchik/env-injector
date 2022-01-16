@@ -44,12 +44,14 @@ validate_command () {
 		for skipname in `echo $ENVINJ_SKIP`; do
 			echoerr skip $skipname
 			if [ "$fetchedname" = "$skipname" ]; then
-				envinj_skipping="yes"
+				echoerr SKIPPING $block
+				envinj_skip="yes"
+				break
 			fi
 		done
-		if [ "$envinj_skipping" = "yes" ]; then
-			echoerr SKIPPING $block
-			continue
+
+		if [ "$envinj_skip" = "yes" ]; then
+			break
 		fi
 		
 		IFS=$' \t\n'
@@ -72,11 +74,14 @@ validate_command () {
 }
 
 export_env_vars() {
-	while read -r env_line
-	do
-		IFS='=' read -r key value <<< "$env_line"
-  	echo "export $key="$'\''"$value"$'\''
-	done <<< "$(env)"
+	for envar in $(env | grep '^[0-9a-zA-Z_]\+\=' | cut -d '=' -f 1); do
+	if [ "$ENVINJ_SHELL" = "bash" ]; then
+		echo "export $envar="\'"${!envar}"\'
+	else
+		echo "export $envar="\'"${(P)envar}"\'
+	fi
+		
+	done
 }
 
 preexec () {
@@ -94,20 +99,16 @@ preexec () {
 	ENVINJ_APP=$(eval "validate_command $envinj_command")
 
 	if [ "$ENVINJ_APP" != "" ]; then
-		echo "🔓ej - found an app that needs an injection"
-		echo "🔓ej - preparing environment variables for ${bold}$ENVINJ_APP${normal}"
-		echo "🔓ej - passing request to provider (${bold}$ENVINJ_PROVIDER${normal})"
+		echo "🔓ej: ${bold}$ENVINJ_APP${normal} needs an injection, passing to ${bold}$ENVINJ_PROVIDER${normal}"
 		
-		ej_user_command="user_command () { $ENVINJ_PROVIDER; }"
-		echoerr $ej_user_command
-		eval "$ej_user_command"
-		new_envs=$(user_command $ENVINJ_APP)
+		tmpfile=$(mktemp)
+		eval "$ENVINJ_PROVIDER $ENVINJ_APP >> $tmpfile"
+		new_envs=$(cat $tmpfile)
+		rm $tmpfile
 
 		export ENVINJ_STATE="$(export_env_vars | base64)"
 
 		eval "$(echo $new_envs | awk '$0="export "$0')"
-
-		echo "🔓ej - injected"
 	fi
 }
 
@@ -117,13 +118,14 @@ fi
 
 precmd() {
 	if [ "$ENVINJ_STATE" != "" ]; then
-		echo "🔓ej - secure process exiting"
-		echo "🔓ej - hiding your secrets now and reverting environment"
-		
+		echo "🔓ej: hiding your secrets now and reverting environment"
 		
 		prev_envs="$(echo $ENVINJ_STATE | tr -d '\n' | tr -d ' ' | base64 -d)"
 		echoerr $prev_envs
-		for envar in $(env | cut -d '=' -f 1); do unset $envar; done
+		for envar in $(env | grep '^[0-9a-zA-Z_]\+\=' | cut -d '=' -f 1); do 
+			unset $envar
+		done
+
 		eval "$prev_envs"
 	fi
 }
