@@ -102,9 +102,9 @@ preexec () {
 		echo "🔓ej: ${bold}$ENVINJ_APP${normal} needs an injection, passing to ${bold}$ENVINJ_PROVIDER${normal}"
 		
 		tmpfile=$(mktemp)
-		eval "$ENVINJ_PROVIDER $ENVINJ_APP >> $tmpfile"
-		new_envs=$(cat $tmpfile)
-		rm $tmpfile
+		
+		app=$ENVINJ_APP
+		eval "$ENVINJ_PROVIDER >> $tmpfile"
 
 		export ENVINJ_STATE="$(export_env_vars | base64)"
 
