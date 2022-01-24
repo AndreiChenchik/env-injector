@@ -108,7 +108,11 @@ preexec () {
 
 		export ENVINJ_STATE="$(export_env_vars | base64)"
 
-		eval "$(echo $new_envs | awk '$0="export "$0')"
+		set -o allexport
+		source $tmpfile
+		set +o allexport
+
+		rm $tmpfile
 	fi
 }
 
